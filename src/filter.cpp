@@ -69,9 +69,7 @@ void BlurFilter::apply(const Image& input, Image& output) const {
     }
 }
 
-// Deteccion de bordes: compara el pixel central con sus 4 vecinos directos
-// (arriba, abajo, izquierda, derecha). En zonas planas el resultado da cerca de 0;
-// en los bordes, el valor se dispara (positivo o negativo).
+// Deteccion de bordes: compara el pixel central con sus 8 vecinos.
 void LaplaceFilter::apply(const Image& input, Image& output) const {
     int width = input.getWidth();
     int height = input.getHeight();
@@ -86,13 +84,18 @@ void LaplaceFilter::apply(const Image& input, Image& output) const {
         while (x < width) {
             int c = 0;
             while (c < channels) {
-                int center = input.getPixelAt(x, y, c);
-                int top    = safeGetPixel(input, x, y - 1, c);
-                int bottom = safeGetPixel(input, x, y + 1, c);
-                int left   = safeGetPixel(input, x - 1, y, c);
-                int right  = safeGetPixel(input, x + 1, y, c);
+                int center    = input.getPixelAt(x, y, c);
+                int top       = safeGetPixel(input, x,     y - 1, c);
+                int bottom    = safeGetPixel(input, x,     y + 1, c);
+                int left      = safeGetPixel(input, x - 1, y,     c);
+                int right     = safeGetPixel(input, x + 1, y,     c);
+                int topLeft   = safeGetPixel(input, x - 1, y - 1, c);
+                int topRight  = safeGetPixel(input, x + 1, y - 1, c);
+                int botLeft   = safeGetPixel(input, x - 1, y + 1, c);
+                int botRight  = safeGetPixel(input, x + 1, y + 1, c);
 
-                int value = 4 * center - top - bottom - left - right;
+                int neighborSum = top + bottom + left + right + topLeft + topRight + botLeft + botRight;
+                int value = 8 * center - neighborSum;
                 output.setPixelAt(x, y, c, clampValue(value, maxColor));
                 c++;
             }
@@ -102,7 +105,8 @@ void LaplaceFilter::apply(const Image& input, Image& output) const {
     }
 }
 
-// Realce: es como laplace, pero sumado sobre la imagen original
+// Realce: es como laplace, pero sumado sobre la imagen original. El resultado se parece a la imagen de entrada, pero con los bordes
+// mas marcados.
 void SharpenFilter::apply(const Image& input, Image& output) const {
     int width = input.getWidth();
     int height = input.getHeight();
