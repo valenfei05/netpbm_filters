@@ -4,9 +4,9 @@
 using namespace std;
 
 static const float blurKernel[3][3] = {
-    {1.0f / 9, 1.0f / 9, 1.0f / 9},
-    {1.0f / 9, 1.0f / 9, 1.0f / 9},
-    {1.0f / 9, 1.0f / 9, 1.0f / 9}
+    {1.0 / 9, 1.0 / 9, 1.0 / 9},
+    {1.0 / 9, 1.0 / 9, 1.0 / 9},
+    {1.0 / 9, 1.0 / 9, 1.0 / 9}
 };
 
 static const float laplaceKernel[3][3] = {
