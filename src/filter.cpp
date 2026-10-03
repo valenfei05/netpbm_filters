@@ -1,44 +1,33 @@
 #include "../headers/Filter.h"
-#include <algorithm>
 
 using namespace std;
 
-static const float blurKernel[3][3] = {
-    {1.0 / 9, 1.0 / 9, 1.0 / 9},
-    {1.0 / 9, 1.0 / 9, 1.0 / 9},
-    {1.0 / 9, 1.0 / 9, 1.0 / 9}
-};
+// Lee un pixel de 'image' en (x, y, canal). Si esta fuera de los limites, retorna 0.
+int safeGetPixel(const Image& image, int x, int y, int channel) {
+    int value = 0;
+    if (x >= 0 && x < image.getWidth() && y >= 0 && y < image.getHeight()) {
+        value = image.getPixelAt(x, y, channel);
+    }
+    return value;
+}
 
-static const float laplaceKernel[3][3] = {
-    { 0, -1,  0},
-    {-1,  4, -1},
-    { 0, -1,  0}
-};
-
-static const float sharpenKernel[3][3] = {
-    { 0, -1,  0},
-    {-1,  5, -1},
-    { 0, -1,  0}
-};
+// Fuerza 'value' a quedar entre 0 y maxColor.
+int clampValue(int value, int maxColor) {
+    int result = value;
+    if (result < 0) {
+        result = 0;
+    }
+    if (result > maxColor) {
+        result = maxColor;
+    }
+    return result;
+}
 
 Filter::~Filter() {}
 
-ConvolutionFilter::ConvolutionFilter(const float newKernel[3][3], bool shouldNormalize) {
-    normalize = shouldNormalize;
-    int y = 0;
-    while (y < 3) {
-        int x = 0;
-        while (x < 3) {
-            kernel[y][x] = newKernel[y][x];
-            x++;
-        }
-        y++;
-    }
-}
-
-// Convolucion 3x3 generica: recorre cada pixel y canal, combina los vecinos
-// segun el kernel, y escribe el resultado (acotado a [0, maxColor]) en 'output'.
-void ConvolutionFilter::apply(const Image& input, Image& output) const {
+// Suavizado: cada pixel se reemplaza por el promedio de sus vecinos. En los bordes de la imagen hay menos vecinos,
+// por eso se divide por 'count' y no siempre por 9.
+void BlurFilter::apply(const Image& input, Image& output) const {
     int width = input.getWidth();
     int height = input.getHeight();
     int channels = input.getChannels();
@@ -52,30 +41,26 @@ void ConvolutionFilter::apply(const Image& input, Image& output) const {
         while (x < width) {
             int c = 0;
             while (c < channels) {
-                float sum = 0.0f;
-                float weightSum = 0.0f;
+                int sum = 0;
+                int count = 0;
 
-                int ky = -1;
-                while (ky <= 1) {
-                    int kx = -1;
-                    while (kx <= 1) {
-                        int nx = x + kx;
-                        int ny = y + ky;
+                int dy = -1;
+                while (dy <= 1) {
+                    int dx = -1;
+                    while (dx <= 1) {
+                        int nx = x + dx;
+                        int ny = y + dy;
                         if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                            float weight = kernel[ky + 1][kx + 1];
-                            sum += input.getPixelAt(nx, ny, c) * weight;
-                            weightSum += weight;
+                            sum += input.getPixelAt(nx, ny, c);
+                            count++;
                         }
-                        kx++;
+                        dx++;
                     }
-                    ky++;
+                    dy++;
                 }
 
-                float divisor = (normalize && weightSum != 0.0f) ? weightSum : 1.0f;
-                int result = static_cast<int>(sum / divisor);
-                result = max(0, min(maxColor, result));
-
-                output.setPixelAt(x, y, c, result);
+                int average = sum / count;
+                output.setPixelAt(x, y, c, clampValue(average, maxColor));
                 c++;
             }
             x++;
@@ -84,6 +69,66 @@ void ConvolutionFilter::apply(const Image& input, Image& output) const {
     }
 }
 
-BlurFilter::BlurFilter() : ConvolutionFilter(blurKernel, true) {}
-LaplaceFilter::LaplaceFilter() : ConvolutionFilter(laplaceKernel, false) {}
-SharpenFilter::SharpenFilter() : ConvolutionFilter(sharpenKernel, false) {}
+// Deteccion de bordes: compara el pixel central con sus 4 vecinos directos
+// (arriba, abajo, izquierda, derecha). En zonas planas el resultado da cerca de 0;
+// en los bordes, el valor se dispara (positivo o negativo).
+void LaplaceFilter::apply(const Image& input, Image& output) const {
+    int width = input.getWidth();
+    int height = input.getHeight();
+    int channels = input.getChannels();
+    int maxColor = input.getMaxColor();
+
+    output.allocate(width, height, channels, maxColor, input.getMagicNumber());
+
+    int y = 0;
+    while (y < height) {
+        int x = 0;
+        while (x < width) {
+            int c = 0;
+            while (c < channels) {
+                int center = input.getPixelAt(x, y, c);
+                int top    = safeGetPixel(input, x, y - 1, c);
+                int bottom = safeGetPixel(input, x, y + 1, c);
+                int left   = safeGetPixel(input, x - 1, y, c);
+                int right  = safeGetPixel(input, x + 1, y, c);
+
+                int value = 4 * center - top - bottom - left - right;
+                output.setPixelAt(x, y, c, clampValue(value, maxColor));
+                c++;
+            }
+            x++;
+        }
+        y++;
+    }
+}
+
+// Realce: es como laplace, pero sumado sobre la imagen original
+void SharpenFilter::apply(const Image& input, Image& output) const {
+    int width = input.getWidth();
+    int height = input.getHeight();
+    int channels = input.getChannels();
+    int maxColor = input.getMaxColor();
+
+    output.allocate(width, height, channels, maxColor, input.getMagicNumber());
+
+    int y = 0;
+    while (y < height) {
+        int x = 0;
+        while (x < width) {
+            int c = 0;
+            while (c < channels) {
+                int center = input.getPixelAt(x, y, c);
+                int top    = safeGetPixel(input, x, y - 1, c);
+                int bottom = safeGetPixel(input, x, y + 1, c);
+                int left   = safeGetPixel(input, x - 1, y, c);
+                int right  = safeGetPixel(input, x + 1, y, c);
+
+                int value = 5 * center - top - bottom - left - right;
+                output.setPixelAt(x, y, c, clampValue(value, maxColor));
+                c++;
+            }
+            x++;
+        }
+        y++;
+    }
+}
