@@ -155,7 +155,6 @@ int* Image::getPixels() { return pixels; }
 const int* Image::getPixels() const { return pixels; }
 const char* Image::getMagicNumber() const { return magicNumber; }
 
-// index = (y*width + x)*channels + canal
 int Image::getPixelAt(int x, int y, int channel) const {
     return pixels[(y * width + x) * channels + channel];
 }
