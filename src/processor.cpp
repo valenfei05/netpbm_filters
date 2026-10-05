@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../headers/Image.h"
+#include "../headers/Image.H"
 
 using namespace std;
 

@@ -1,4 +1,4 @@
-#include "../headers/Image.h"
+#include "../headers/Image.H"
 #include <iostream>
 
 using namespace std;
@@ -130,9 +130,9 @@ bool Image::saveToFile(const char* path) const {
 
 // Reserva un buffer nuevo de pixeles (usado por los filtros para la imagen de salida).
 void Image::allocate(int newWidth, int newHeight, int newChannels, int newMaxColor, const char* newMagicNumber) {
-    if (pixels != NULL) {
-        delete[] pixels;
-    }
+    int* newPixels = new int[newWidth * newHeight * newChannels];
+    delete[] pixels;
+    pixels = newPixels;
 
     width = newWidth;
     height = newHeight;
@@ -142,7 +142,6 @@ void Image::allocate(int newWidth, int newHeight, int newChannels, int newMaxCol
     magicNumber[1] = newMagicNumber[1];
     magicNumber[2] = '\0';
 
-    pixels = new int[getPixelCount()];
 }
 
 int Image::getWidth() const { return width; }

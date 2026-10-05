@@ -1,18 +1,14 @@
-Este programa en C++ permite leer archivos de imagen en formato PGM (escala de grises).
+# filterer - referencia secuencial
 
-## Compilacion
-```bash
-g++ -o ../filterer filterer.cpp
+Desde la raíz del repositorio:
+
+```powershell
+python scripts/build.py
+New-Item -ItemType Directory -Force output | Out-Null
+./build/filterer.exe images/lena.pgm output/lena_blur.pgm --f blur
 ```
 
-## Ubicacion
-
-```bash
-cd ..
-```
-
-## Ejecucion
-
-```bash 
-./filterer images/lena.pgm images/lena_blur.pgm
-```
+Filtros disponibles: blur, laplace, sharpen. Admite PGM P2 y PPM P3.
+En Linux usa `python3` y omite `.exe`.
+El cálculo es el mismo del Diseño 2, reorganizado para compartir regiones con los ejecutores paralelos.
+Ver `../docs/DISENO_3.md` y `../README.md` para los puntos de medición y las variantes paralelas.

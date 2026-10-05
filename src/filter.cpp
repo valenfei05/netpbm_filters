@@ -1,4 +1,5 @@
-#include "../headers/Filter.h"
+#include "../headers/filter.H"
+#include <stdexcept>
 
 using namespace std;
 
@@ -25,20 +26,35 @@ int clampValue(int value, int maxColor) {
 
 Filter::~Filter() {}
 
+void Filter::prepareOutput(const Image& input, Image& output) {
+    if (&input == &output) {
+        throw std::invalid_argument("Entrada y salida deben ser imagenes distintas");
+    }
+    if (input.getPixels() == NULL || input.getWidth() <= 0 || input.getHeight() <= 0) {
+        throw std::invalid_argument("La imagen de entrada esta vacia");
+    }
+    output.allocate(input.getWidth(), input.getHeight(), input.getChannels(),
+                    input.getMaxColor(), input.getMagicNumber());
+}
+
+void Filter::apply(const Image& input, Image& output) const {
+    prepareOutput(input, output);
+    applyRegion(input, output, 0, input.getWidth(), 0, input.getHeight());
+}
+
 // Suavizado: cada pixel se reemplaza por el promedio de sus vecinos. En los bordes de la imagen hay menos vecinos,
 // por eso se divide por 'count' y no siempre por 9.
-void BlurFilter::apply(const Image& input, Image& output) const {
+void BlurFilter::applyRegion(const Image& input, Image& output,
+                              int xBegin, int xEnd, int yBegin, int yEnd) const {
     int width = input.getWidth();
     int height = input.getHeight();
     int channels = input.getChannels();
     int maxColor = input.getMaxColor();
 
-    output.allocate(width, height, channels, maxColor, input.getMagicNumber());
-
-    int y = 0;
-    while (y < height) {
-        int x = 0;
-        while (x < width) {
+    int y = yBegin;
+    while (y < yEnd) {
+        int x = xBegin;
+        while (x < xEnd) {
             int c = 0;
             while (c < channels) {
                 int sum = 0;
@@ -70,18 +86,15 @@ void BlurFilter::apply(const Image& input, Image& output) const {
 }
 
 // Deteccion de bordes: compara el pixel central con sus 8 vecinos.
-void LaplaceFilter::apply(const Image& input, Image& output) const {
-    int width = input.getWidth();
-    int height = input.getHeight();
+void LaplaceFilter::applyRegion(const Image& input, Image& output,
+                              int xBegin, int xEnd, int yBegin, int yEnd) const {
     int channels = input.getChannels();
     int maxColor = input.getMaxColor();
 
-    output.allocate(width, height, channels, maxColor, input.getMagicNumber());
-
-    int y = 0;
-    while (y < height) {
-        int x = 0;
-        while (x < width) {
+    int y = yBegin;
+    while (y < yEnd) {
+        int x = xBegin;
+        while (x < xEnd) {
             int c = 0;
             while (c < channels) {
                 int center    = input.getPixelAt(x, y, c);
@@ -107,18 +120,15 @@ void LaplaceFilter::apply(const Image& input, Image& output) const {
 
 // Realce: es como laplace, pero sumado sobre la imagen original. El resultado se parece a la imagen de entrada, pero con los bordes
 // mas marcados.
-void SharpenFilter::apply(const Image& input, Image& output) const {
-    int width = input.getWidth();
-    int height = input.getHeight();
+void SharpenFilter::applyRegion(const Image& input, Image& output,
+                              int xBegin, int xEnd, int yBegin, int yEnd) const {
     int channels = input.getChannels();
     int maxColor = input.getMaxColor();
 
-    output.allocate(width, height, channels, maxColor, input.getMagicNumber());
-
-    int y = 0;
-    while (y < height) {
-        int x = 0;
-        while (x < width) {
+    int y = yBegin;
+    while (y < yEnd) {
+        int x = xBegin;
+        while (x < xEnd) {
             int c = 0;
             while (c < channels) {
                 int center = input.getPixelAt(x, y, c);

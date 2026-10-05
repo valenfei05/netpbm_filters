@@ -42,3 +42,6 @@
 
 
 .DS_Store
+/build*/
+/output/
+__pycache__/

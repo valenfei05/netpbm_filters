@@ -28,6 +28,10 @@ public:
     Image();
     virtual ~Image();
 
+    // El arreglo tiene un solo propietario; evita copias superficiales y double free.
+    Image(const Image&) = delete;
+    Image& operator=(const Image&) = delete;
+
     /// Carga la imagen desde 'path'. Retorna false si no se pudo abrir o leer.
     bool loadFromFile(const char* path);
 
